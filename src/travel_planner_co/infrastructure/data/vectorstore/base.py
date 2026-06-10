@@ -6,7 +6,7 @@ class VectorStore(ABC):
     @abstractmethod
     async def add(
         self,
-        document_id: str,
+        destination_id: str,
         content: str,
         embedding: list[float]
     ):

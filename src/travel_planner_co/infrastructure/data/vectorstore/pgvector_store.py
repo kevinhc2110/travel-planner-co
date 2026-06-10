@@ -9,7 +9,7 @@ class PGVectorStore:
 
     async def add(
         self,
-        document_id: str,
+        destination_id: str,
         content: str,
         embedding: list[float],
         metadata: dict | None = None,
@@ -18,14 +18,14 @@ class PGVectorStore:
         await self.db.execute(
             """
             INSERT INTO chunks (
-                document_id,
+                destination_id,
                 content,
                 embedding,
                 metadata
             )
             VALUES ($1, $2, $3, $4)
             """,
-            document_id,
+            destination_id,
             content,
             embedding,
             json.dumps(metadata) if metadata else None
@@ -41,7 +41,7 @@ class PGVectorStore:
             """
             SELECT
                 id,
-                document_id,
+                destination_id,
                 content,
                 metadata,
                 embedding <-> $1 AS score
@@ -56,7 +56,7 @@ class PGVectorStore:
         return [
             ChunkRecord(
                 id=r["id"],
-                document_id=r["document_id"],
+                destination_id=r["destination_id"],
                 content=r["content"],
                 metadata=r["metadata"],
             )

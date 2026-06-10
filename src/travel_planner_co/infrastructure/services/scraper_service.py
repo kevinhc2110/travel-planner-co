@@ -1,6 +1,10 @@
+import logging
+
 from travel_planner_co.domain.entities.destination import Destination
 from travel_planner_co.domain.services.scraper import ScraperService as BaseScraperService
 from travel_planner_co.infrastructure.scrapers.base import Scraper
+
+logger = logging.getLogger(__name__)
 
 
 class ScraperService(BaseScraperService):
@@ -23,3 +27,20 @@ class ScraperService(BaseScraperService):
                         )
                     )
         return destinations
+
+    async def scrape_url(self, url: str) -> list[Destination]:
+        for scraper in self.scrapers:
+            try:
+                data = scraper.scrape_article(url)
+                if data and data.get("title") and data.get("content"):
+                    return [
+                        Destination(
+                            title=data["title"],
+                            content=data["content"],
+                            source=scraper.NAME,
+                            url=url,
+                        )
+                    ]
+            except Exception:
+                logger.warning("Scraper %s failed for URL %s", scraper.NAME, url)
+        return []

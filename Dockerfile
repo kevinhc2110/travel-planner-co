@@ -1,11 +1,3 @@
-FROM node:22-alpine AS frontend-builder
-
-WORKDIR /build
-COPY demo/package.json demo/package-lock.json* ./
-RUN npm ci
-COPY demo/ .
-RUN npm run build
-
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -32,8 +24,6 @@ RUN poetry install --no-interaction --no-ansi
 
 COPY . .
 
-COPY --from=frontend-builder /build/dist demo/dist
-
 EXPOSE 8000
 
-CMD ["uvicorn", "hr_assistant.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "travel_planner_co.main:app", "--host", "0.0.0.0", "--port", "8000"]

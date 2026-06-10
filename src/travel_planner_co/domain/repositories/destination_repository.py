@@ -9,5 +9,21 @@ class DestinationRepository(ABC):
         ...
 
     @abstractmethod
+    async def update(self, destination: Destination) -> None:
+        ...
+
+    @abstractmethod
+    async def get_by_id(self, id: str) -> Destination | None:
+        ...
+
+    @abstractmethod
+    async def get_by_url(self, url: str) -> Destination | None:
+        ...
+
+    @abstractmethod
     async def list_all(self) -> list[Destination]:
+        ...
+
+    @abstractmethod
+    async def delete_chunks(self, destination_id: str) -> None:
         ...

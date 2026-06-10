@@ -7,3 +7,7 @@ class ScraperService(ABC):
     @abstractmethod
     async def scrape_all(self) -> list[Destination]:
         ...
+
+    @abstractmethod
+    async def scrape_url(self, url: str) -> list[Destination]:
+        ...

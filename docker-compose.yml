@@ -1,7 +1,7 @@
 services:
   db:
-    image: pgvector/pgvector:pg17
-    container_name: hr-assistant-db
+    image: pgvector/pgvector:pg17-postgis
+    container_name: travel-planner-db
     restart: unless-stopped
 
     environment:
@@ -22,12 +22,26 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: travel-planner-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   app:
     build: .
-    container_name: hr-assistant-app
+    container_name: travel-planner-app
 
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
     ports:
@@ -35,8 +49,36 @@ services:
 
     env_file: .env
 
+    environment:
+      redis_url: redis://redis:6379/0
+
     volumes:
       - .:/app
+
+    restart: unless-stopped
+
+  worker:
+    build: .
+    container_name: travel-planner-worker
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    env_file: .env
+
+    environment:
+      redis_url: redis://redis:6379/0
+
+    volumes:
+      - .:/app
+
+    command: [
+      "arq",
+      "travel_planner_co.infrastructure.worker.settings.WorkerSettings"
+    ]
 
     restart: unless-stopped
 
