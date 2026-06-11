@@ -43,33 +43,33 @@ class SyncAllSourcesUseCase:
             raw_list = await self.scraper_service.scrape_url(url)
             if not raw_list:
                 continue
-            raw = raw_list[0]
 
-            dest = Destination(
-                name=raw.name,
-                full_content=raw.full_content,
-                source=raw.source,
-                url=raw.url,
-            )
-            dest = await self.geo_enricher.enrich(dest)
-            dest_id = await self.destination_repository.save(dest)
+            for raw in raw_list:
+                dest = Destination(
+                    name=raw.name,
+                    full_content=raw.full_content,
+                    source=raw.source,
+                    url=raw.url,
+                )
+                dest = await self.geo_enricher.enrich(dest)
+                dest_id = await self.destination_repository.save(dest)
 
-            chunks = self.text_chunker.chunk(dest.full_content or "")
-            if chunks:
-                embeddings = await self.embedding_provider.embed_batch(chunks)
-                for chunk_text, embedding in zip(chunks, embeddings):
-                    await self.vector_store.add(
-                        destination_id=dest_id,
-                        content=chunk_text,
-                        embedding=embedding,
-                        metadata={
-                            "source": dest.source,
-                            "name": dest.name,
-                            "url": dest.url,
-                            "city": dest.city,
-                            "category": dest.category,
-                        },
-                    )
-            count += 1
+                chunks = self.text_chunker.chunk(dest.full_content or "")
+                if chunks:
+                    embeddings = await self.embedding_provider.embed_batch(chunks)
+                    for chunk_text, embedding in zip(chunks, embeddings):
+                        await self.vector_store.add(
+                            destination_id=dest_id,
+                            content=chunk_text,
+                            embedding=embedding,
+                            metadata={
+                                "source": dest.source,
+                                "name": dest.name,
+                                "url": dest.url,
+                                "city": dest.city,
+                                "category": dest.category,
+                            },
+                        )
+                count += 1
 
         return count

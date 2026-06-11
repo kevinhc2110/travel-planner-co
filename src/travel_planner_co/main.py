@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from arq.connections import create_pool
+from arq.connections import RedisSettings, create_pool
 
 from fastapi import FastAPI
 
@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
     await db.connect()
     app.state.db = db
 
-    redis = await create_pool(settings.redis_url)
+    redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
     app.state.redis = redis
 
     yield

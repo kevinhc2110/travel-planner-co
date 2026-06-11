@@ -4,7 +4,7 @@ from datetime import datetime
 
 @dataclass
 class Plan:
-    city: str
+    location: str
     days: int
     preferences: dict | None = None
     itinerary: dict | None = None

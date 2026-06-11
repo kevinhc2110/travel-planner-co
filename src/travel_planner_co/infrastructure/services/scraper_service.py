@@ -1,10 +1,14 @@
-import logging
+import re
 
 from travel_planner_co.domain.entities.destination import Destination
 from travel_planner_co.domain.services.scraper import ScraperService as BaseScraperService
 from travel_planner_co.infrastructure.scrapers.base import Scraper
+from travel_planner_co.infrastructure.scrapers.list_splitter import split_list_article
 
-logger = logging.getLogger(__name__)
+
+def _make_item_url(base_url: str, item_name: str, index: int) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", item_name.lower()).strip("-")[:40]
+    return f"{base_url}#{slug}" if slug else f"{base_url}#item-{index}"
 
 
 class ScraperService(BaseScraperService):
@@ -25,14 +29,16 @@ class ScraperService(BaseScraperService):
             for url in urls:
                 data = scraper.scrape_article(url)
                 if data and data.get("title") and data.get("content"):
-                    destinations.append(
-                        Destination(
-                            name=data["title"],
-                            full_content=data["content"],
-                            source=scraper.NAME,
-                            url=url,
+                    items = split_list_article(data["title"], data["content"])
+                    for i, item in enumerate(items):
+                        destinations.append(
+                            Destination(
+                                name=item["title"],
+                                full_content=item["content"],
+                                source=scraper.NAME,
+                                url=_make_item_url(url, item["title"], i),
+                            )
                         )
-                    )
         return destinations
 
     async def scrape_url(self, url: str) -> list[Destination]:
@@ -40,14 +46,16 @@ class ScraperService(BaseScraperService):
             try:
                 data = scraper.scrape_article(url)
                 if data and data.get("title") and data.get("content"):
+                    items = split_list_article(data["title"], data["content"])
                     return [
                         Destination(
-                            name=data["title"],
-                            full_content=data["content"],
+                            name=item["title"],
+                            full_content=item["content"],
                             source=scraper.NAME,
-                            url=url,
+                            url=_make_item_url(url, item["title"], i),
                         )
+                        for i, item in enumerate(items)
                     ]
             except Exception:
-                logger.warning("Scraper %s failed for URL %s", scraper.NAME, url)
+                pass
         return []

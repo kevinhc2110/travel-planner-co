@@ -4,45 +4,8 @@ from travel_planner_co.domain.entities.plan import Plan
 from travel_planner_co.domain.repositories.destination_repository import DestinationRepository
 from travel_planner_co.domain.repositories.plan_repository import PlanRepository
 from travel_planner_co.infrastructure.ai.llm.base import LLMProvider
+from travel_planner_co.infrastructure.constants import PLAN_PROMPT
 from travel_planner_co.infrastructure.services.geo_enricher import GeoEnricher
-
-PLAN_PROMPT = """
-Eres un planificador de viajes experto en Colombia.
-
-Basado en los siguientes destinos turísticos disponibles en {city} y sus alrededores,
-genera un itinerario detallado para {days} días.
-
-Preferencias del viajero: {preferences}
-
-Categorías de interés: {categories}
-
-Destinos disponibles:
-{destinations}
-
-Genera un plan JSON con esta estructura exacta:
-{{
-    "summary": "resumen del plan en 2 oraciones",
-    "daily_plans": [
-        {{
-            "day": 1,
-            "title": "título del día",
-            "activities": [
-                {{
-                    "time": "08:00",
-                    "activity": "descripción",
-                    "destination": "nombre del destino",
-                    "duration_hours": 2,
-                    "notes": "tips o recomendaciones"
-                }}
-            ]
-        }}
-    ],
-    "total_cost_estimate": "estimado de costos en COP",
-    "recommendations": ["recomendación 1", "recomendación 2"]
-}}
-
-Solo responde con el JSON, sin explicaciones adicionales.
-"""
 
 
 class GeneratePlanUseCase:
@@ -60,12 +23,12 @@ class GeneratePlanUseCase:
 
     async def execute(
         self,
-        city: str,
+        location: str,
         days: int,
         categories: list[str] | None = None,
         preferences: dict | None = None,
     ) -> Plan:
-        coords = await self.geo_enricher.geocode_city(city)
+        coords = await self.geo_enricher.geocode_location(location)
 
         if coords:
             lat, lng = coords
@@ -80,7 +43,7 @@ class GeneratePlanUseCase:
 
         dest_text = "\n\n".join(
             f"Nombre: {d.name}\n"
-            f"Ciudad: {d.city}\n"
+            f"Ubicación: {d.city}\n"
             f"Categoría: {d.category}\n"
             f"Rating: {d.rating}\n"
             f"Días estimados: {d.estimated_days}\n"
@@ -90,12 +53,12 @@ class GeneratePlanUseCase:
         )
 
         if not dest_text:
-            dest_text = "No se encontraron destinos cercanos. Sugiere al usuario explorar otras ciudades."
+            dest_text = "No se encontraron destinos cercanos. Sugiere al usuario explorar otras zonas."
 
         prefs_text = json.dumps(preferences, ensure_ascii=False) if preferences else "ninguna en particular"
         cats_text = ", ".join(categories) if categories else "todas"
         prompt = PLAN_PROMPT.format(
-            city=city,
+            location=location,
             days=days,
             preferences=prefs_text,
             categories=cats_text,
@@ -114,7 +77,7 @@ class GeneratePlanUseCase:
             plan_prefs["categories"] = categories
 
         plan = Plan(
-            city=city,
+            location=location,
             days=days,
             preferences=plan_prefs,
             itinerary=itinerary,

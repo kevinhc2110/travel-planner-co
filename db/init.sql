@@ -37,7 +37,7 @@ CREATE TABLE chunks (
 
 CREATE TABLE plans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    city TEXT NOT NULL,
+    location TEXT NOT NULL,
     days INT NOT NULL,
     preferences JSONB,
     itinerary JSONB NOT NULL,

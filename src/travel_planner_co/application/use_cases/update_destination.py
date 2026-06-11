@@ -25,43 +25,47 @@ class UpdateDestinationUseCase:
         self.geo_enricher = geo_enricher
 
     async def execute(self, url: str) -> str | None:
-        raw_destinations = await self.scraper_service.scrape_url(url)
-        if not raw_destinations:
+        raw_list = await self.scraper_service.scrape_url(url)
+        if not raw_list:
             return None
 
-        raw = raw_destinations[0]
-        dest = Destination(
-            name=raw.name,
-            full_content=raw.full_content,
-            source=raw.source,
-            url=raw.url,
-        )
-        dest = await self.geo_enricher.enrich(dest)
+        first_name = None
+        for raw in raw_list:
+            dest = Destination(
+                name=raw.name,
+                full_content=raw.full_content,
+                source=raw.source,
+                url=raw.url,
+            )
+            dest = await self.geo_enricher.enrich(dest)
 
-        existing = await self.destination_repository.get_by_url(dest.url)
-        if existing:
-            dest.id = existing.id
-            await self.destination_repository.update(dest)
-            await self.destination_repository.delete_chunks(str(existing.id))
-            dest_id = str(existing.id)
-        else:
-            dest_id = await self.destination_repository.save(dest)
+            existing = await self.destination_repository.get_by_url(dest.url)
+            if existing:
+                dest.id = existing.id
+                await self.destination_repository.update(dest)
+                await self.destination_repository.delete_chunks(str(existing.id))
+                dest_id = str(existing.id)
+            else:
+                dest_id = await self.destination_repository.save(dest)
 
-        chunks = self.text_chunker.chunk(dest.full_content or "")
-        if chunks:
-            embeddings = await self.embedding_provider.embed_batch(chunks)
-            for chunk_text, embedding in zip(chunks, embeddings, strict=True):
-                await self.vector_store.add(
-                    destination_id=dest_id,
-                    content=chunk_text,
-                    embedding=embedding,
-                    metadata={
-                        "source": dest.source,
-                        "name": dest.name,
-                        "url": dest.url,
-                        "city": dest.city,
-                        "category": dest.category,
-                    },
-                )
+            chunks = self.text_chunker.chunk(dest.full_content or "")
+            if chunks:
+                embeddings = await self.embedding_provider.embed_batch(chunks)
+                for chunk_text, embedding in zip(chunks, embeddings, strict=True):
+                    await self.vector_store.add(
+                        destination_id=dest_id,
+                        content=chunk_text,
+                        embedding=embedding,
+                        metadata={
+                            "source": dest.source,
+                            "name": dest.name,
+                            "url": dest.url,
+                            "city": dest.city,
+                            "category": dest.category,
+                        },
+                    )
 
-        return dest.name
+            if first_name is None:
+                first_name = dest.name
+
+        return first_name

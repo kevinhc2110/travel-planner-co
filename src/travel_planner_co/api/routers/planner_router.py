@@ -16,14 +16,14 @@ async def generate_plan(
     use_case: GeneratePlanUseCase = Depends(get_generate_plan_use_case),
 ):
     plan = await use_case.execute(
-        city=body.city,
+        location=body.location,
         days=body.days,
         categories=body.categories,
         preferences=body.preferences,
     )
     return GeneratePlanResponse(
         plan_id=str(plan.id),
-        city=plan.city,
+        location=plan.location,
         days=plan.days,
         categories=body.categories,
         itinerary=plan.itinerary or {},

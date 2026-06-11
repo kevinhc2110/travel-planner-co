@@ -11,11 +11,11 @@ class PlanRepository(BasePlanRepository):
     async def save(self, plan: Plan) -> str:
         row = await self.db.fetch(
             """
-            INSERT INTO plans (city, days, preferences, itinerary)
+            INSERT INTO plans (location, days, preferences, itinerary)
             VALUES ($1, $2, $3, $4)
             RETURNING id
             """,
-            plan.city,
+            plan.location,
             plan.days,
             json.dumps(plan.preferences) if plan.preferences else None,
             json.dumps(plan.itinerary) if plan.itinerary else None,

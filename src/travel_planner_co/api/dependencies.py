@@ -21,6 +21,7 @@ from travel_planner_co.infrastructure.data.repositories.plan_repository import (
 from travel_planner_co.infrastructure.scrapers.colombia_travel_scraper import ColombiaTravel
 from travel_planner_co.infrastructure.scrapers.travelgrafia_scraper import Travelgrafia
 from travel_planner_co.infrastructure.services.geo_enricher import GeoEnricher
+from travel_planner_co.infrastructure.services.geocoder import NominatimGeocoder
 from travel_planner_co.infrastructure.services.scraper_service import ScraperService
 from travel_planner_co.infrastructure.services.text_chunker import SimpleTextChunker
 
@@ -59,8 +60,15 @@ def get_scraper_service() -> ScraperService:
     scrapers = [Travelgrafia()]
     return ScraperService(scrapers=scrapers)
 
-def get_geo_enricher(llm_provider=Depends(get_llm_provider)) -> GeoEnricher:
-    return GeoEnricher(llm_provider=llm_provider)
+def get_geocoder() -> NominatimGeocoder:
+    return NominatimGeocoder()
+
+
+def get_geo_enricher(
+    llm_provider=Depends(get_llm_provider),
+    geocoder: NominatimGeocoder = Depends(get_geocoder),
+) -> GeoEnricher:
+    return GeoEnricher(llm_provider=llm_provider, geocoder=geocoder)
 
 def get_sync_all_sources_use_case(
     scraper_service: ScraperService = Depends(get_scraper_service),
