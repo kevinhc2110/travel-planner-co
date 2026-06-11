@@ -82,5 +82,14 @@ services:
 
     restart: unless-stopped
 
+  frontend:
+    build: ./demo
+    container_name: travel-planner-demo
+    depends_on:
+      - app
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+
 volumes:
   postgres_data:

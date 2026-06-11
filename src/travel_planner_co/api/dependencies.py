@@ -109,12 +109,16 @@ def get_generate_plan_use_case(
     destination_repository: DestinationRepository = Depends(get_destination_repository),
     plan_repository: PlanRepository = Depends(get_plan_repository),
     geo_enricher: GeoEnricher = Depends(get_geo_enricher),
+    embedding_provider=Depends(get_embedding_provider),
+    vector_store=Depends(get_vector_store),
 ) -> GeneratePlanUseCase:
     return GeneratePlanUseCase(
         llm_provider=llm_provider,
         destination_repository=destination_repository,
         plan_repository=plan_repository,
         geo_enricher=geo_enricher,
+        embedding_provider=embedding_provider,
+        vector_store=vector_store,
     )
 
 def get_redis_pool(request: HTTPConnection) -> ArqRedis:

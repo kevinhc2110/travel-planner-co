@@ -24,27 +24,30 @@ class SyncAllSourcesUseCase:
         self.vector_store = vector_store
         self.geo_enricher = geo_enricher
 
-    async def execute(self) -> int:
+    async def execute(self, max_urls: int | None = None) -> int:
         all_urls = await self.scraper_service.discover_urls()
+        if max_urls is not None:
+            all_urls = all_urls[:max_urls]
 
-        existing_urls: set[str] = set()
-        for url in all_urls:
-            existing = await self.destination_repository.get_by_url(url)
-            if existing:
-                existing_urls.add(url)
-
-        new_urls = [u for u in all_urls if u not in existing_urls]
-
-        if not new_urls:
+        if not all_urls:
             return 0
 
         count = 0
-        for url in new_urls:
+        for url in all_urls:
             raw_list = await self.scraper_service.scrape_url(url)
             if not raw_list:
                 continue
 
+            shared_city: str | None = None
+            shared_department: str | None = None
+            shared_latitude: float | None = None
+            shared_longitude: float | None = None
+
             for raw in raw_list:
+                existing = await self.destination_repository.get_by_url(raw.url)
+                if existing:
+                    continue
+
                 dest = Destination(
                     name=raw.name,
                     full_content=raw.full_content,
@@ -52,6 +55,33 @@ class SyncAllSourcesUseCase:
                     url=raw.url,
                 )
                 dest = await self.geo_enricher.enrich(dest)
+
+                if dest.city is None and shared_city is not None:
+                    dest.city = shared_city
+                if dest.department is None and shared_department is not None:
+                    dest.department = shared_department
+                if dest.latitude is None and shared_latitude is not None:
+                    dest.latitude = shared_latitude
+                    dest.longitude = shared_longitude
+
+                if shared_city is None and dest.city is not None:
+                    shared_city = dest.city
+                if shared_department is None and dest.department is not None:
+                    shared_department = dest.department
+                if shared_latitude is None and dest.latitude is not None:
+                    shared_latitude = dest.latitude
+                    shared_longitude = dest.longitude
+
+                similar = None
+                if dest.latitude is not None and dest.longitude is not None:
+                    similar = await self.destination_repository.find_similar(
+                        name=dest.name,
+                        latitude=dest.latitude,
+                        longitude=dest.longitude,
+                    )
+                if similar:
+                    continue
+
                 dest_id = await self.destination_repository.save(dest)
 
                 chunks = self.text_chunker.chunk(dest.full_content or "")

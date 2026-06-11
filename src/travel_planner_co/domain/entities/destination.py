@@ -18,6 +18,7 @@ class Destination:
     best_season: str | None = None
     latitude: float | None = None
     longitude: float | None = None
+    distance_km: float | None = None
     tags: list[str] | None = None
     id: str | None = None
     created_at: datetime | None = None

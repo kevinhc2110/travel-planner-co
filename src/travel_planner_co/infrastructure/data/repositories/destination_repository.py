@@ -1,3 +1,5 @@
+import re
+import unicodedata
 from datetime import datetime, timezone
 
 from travel_planner_co.domain.entities.destination import Destination
@@ -73,11 +75,16 @@ class DestinationRepository(BaseDestinationRepository):
         loc = r.get("location")
         lon = lat = None
         if loc:
-            if hasattr(loc, 'x'):
-                lon = loc.x
-                lat = loc.y
-            elif isinstance(loc, (list, tuple)):
+            if isinstance(loc, (list, tuple)):
                 lon, lat = loc
+            elif isinstance(loc, str):
+                try:
+                    import json
+                    coords = json.loads(loc)
+                    if isinstance(coords, (list, tuple)):
+                        lon, lat = coords
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    pass
         return Destination(
             id=str(r["id"]),
             name=r["name"],
@@ -96,6 +103,7 @@ class DestinationRepository(BaseDestinationRepository):
             best_season=r.get("best_season"),
             latitude=lat,
             longitude=lon,
+            distance_km=r.get("distance_km"),
             tags=r.get("tags"),
             created_at=r["created_at"],
             updated_at=r.get("updated_at"),
@@ -107,7 +115,7 @@ class DestinationRepository(BaseDestinationRepository):
             SELECT id, name, description, full_content, source, url,
                    city, department, country, category, rating,
                    estimated_days, best_season,
-                   ST_AsGeoJSON(location)::json->'coordinates' as location,
+                    ST_AsGeoJSON(location)::jsonb->'coordinates' as location,
                    tags, created_at, updated_at
             FROM destinations
             WHERE id = $1
@@ -124,7 +132,7 @@ class DestinationRepository(BaseDestinationRepository):
             SELECT id, name, description, full_content, source, url,
                    city, department, country, category, rating,
                    estimated_days, best_season,
-                   ST_AsGeoJSON(location)::json->'coordinates' as location,
+                    ST_AsGeoJSON(location)::jsonb->'coordinates' as location,
                    tags, created_at, updated_at
             FROM destinations
             WHERE url = $1
@@ -141,7 +149,7 @@ class DestinationRepository(BaseDestinationRepository):
             SELECT id, name, description, full_content, source, url,
                    city, department, country, category, rating,
                    estimated_days, best_season,
-                   ST_AsGeoJSON(location)::json->'coordinates' as location,
+                    ST_AsGeoJSON(location)::jsonb->'coordinates' as location,
                    tags, created_at, updated_at
             FROM destinations
             ORDER BY created_at DESC
@@ -157,7 +165,7 @@ class DestinationRepository(BaseDestinationRepository):
             SELECT id, name, description, full_content, source, url,
                    city, department, country, category, rating,
                    estimated_days, best_season,
-                   ST_AsGeoJSON(location)::json->'coordinates' as location,
+                    ST_AsGeoJSON(location)::jsonb->'coordinates' as location,
                    tags, created_at, updated_at,
                    ST_Distance(
                        location,
@@ -176,6 +184,60 @@ class DestinationRepository(BaseDestinationRepository):
             radius_km,
         )
         return [self._row_to_destination(r) for r in rows]
+
+    async def find_similar(
+        self, name: str, latitude: float, longitude: float, radius_m: float = 200
+    ) -> Destination | None:
+        rows = await self.db.fetch(
+            """
+            SELECT id, name, description, full_content, source, url,
+                   city, department, country, category, rating,
+                   estimated_days, best_season,
+                   ST_AsGeoJSON(location)::jsonb->'coordinates' as location,
+                   tags, created_at, updated_at
+            FROM destinations
+            WHERE ST_DWithin(
+                location,
+                ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+                $3
+            )
+            """,
+            longitude,
+            latitude,
+            radius_m,
+        )
+        normalized_new = self._normalize_name(name)
+        for r in rows:
+            existing_name = r["name"]
+            normalized_existing = self._normalize_name(existing_name)
+            if self._names_match(normalized_new, normalized_existing):
+                return self._row_to_destination(r)
+        return None
+
+    @staticmethod
+    def _normalize_name(name: str) -> str:
+        s = name.lower().strip()
+        s = unicodedata.normalize("NFKD", s)
+        s = s.encode("ascii", "ignore").decode("ascii")
+        s = re.sub(r"\(.*?\)", "", s)
+        s = s.split(":", 1)[0]
+        prefixes = [
+            "parque nacional natural ", "parque natural ", "parque nacional ",
+            "reserva natural ", "centro historico de ",
+        ]
+        for p in prefixes:
+            if s.startswith(p):
+                s = s[len(p):]
+                break
+        s = re.sub(r"[^a-z0-9\s]", "", s)
+        return s.strip()
+
+    @staticmethod
+    def _names_match(a: str, b: str) -> bool:
+        if not a or not b:
+            return False
+        shorter, longer = (a, b) if len(a) <= len(b) else (b, a)
+        return shorter in longer
 
     async def delete_chunks(self, destination_id: str) -> None:
         await self.db.execute(

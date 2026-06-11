@@ -23,7 +23,7 @@ The package is `travel_planner_co` (under `src/`), but **all internal imports** 
 
 ## Infrastructure layout
 
-```
+```text
 infrastructure/
   ai/              — LLM + embeddings (Gemini)
   data/            — database, vectorstore, repository implementations
@@ -53,10 +53,12 @@ docker compose up --build               # full stack (db + app)
 Located in `infrastructure/scrapers/`. Each scraper extends `Scraper` (ABC) and implements:
 
 Shared HTTP utility `fetch_html` lives in `infrastructure/http/fetch.py` (rate limiting, Cloudflare detection, error handling).
+
 - `collect_article_urls() -> list[str]` — orchestrates URL discovery
 - `scrape_article(url) -> dict` — extracts title + content from a single page
 
 Shared helpers on `Scraper`:
+
 - `clean_content(container)` — strips `a/figure/img/picture/source/figcaption/iframe`, extracts text from `h2,h3,h4,p,li`, joins with double newline
 - `extract_links(soup, selector, prefix)` — deduplicated link extraction from CSS selector
 

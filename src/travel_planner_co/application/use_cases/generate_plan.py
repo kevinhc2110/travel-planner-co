@@ -3,9 +3,13 @@ import json
 from travel_planner_co.domain.entities.plan import Plan
 from travel_planner_co.domain.repositories.destination_repository import DestinationRepository
 from travel_planner_co.domain.repositories.plan_repository import PlanRepository
+from travel_planner_co.infrastructure.ai.embeddings.base import EmbeddingProvider
 from travel_planner_co.infrastructure.ai.llm.base import LLMProvider
 from travel_planner_co.infrastructure.constants import PLAN_PROMPT
+from travel_planner_co.infrastructure.data.vectorstore.pgvector_store import PGVectorStore
 from travel_planner_co.infrastructure.services.geo_enricher import GeoEnricher
+
+MIN_SPATIAL_RESULTS = 5
 
 
 class GeneratePlanUseCase:
@@ -15,11 +19,15 @@ class GeneratePlanUseCase:
         destination_repository: DestinationRepository,
         plan_repository: PlanRepository,
         geo_enricher: GeoEnricher,
+        embedding_provider: EmbeddingProvider,
+        vector_store: PGVectorStore,
     ):
         self.llm_provider = llm_provider
         self.destination_repository = destination_repository
         self.plan_repository = plan_repository
         self.geo_enricher = geo_enricher
+        self.embedding_provider = embedding_provider
+        self.vector_store = vector_store
 
     async def execute(
         self,
@@ -41,9 +49,31 @@ class GeneratePlanUseCase:
         if categories:
             near = [d for d in near if d.category and d.category in categories]
 
+        if len(near) < MIN_SPATIAL_RESULTS:
+            query_text = f"Viaje a {location}"
+            if preferences:
+                query_text += f", interés en {json.dumps(preferences, ensure_ascii=False)}"
+            if categories:
+                query_text += f", categorías: {', '.join(categories)}"
+            embedding = await self.embedding_provider.embed(query_text)
+            chunks = await self.vector_store.search(embedding, top_k=10)
+            seen_ids = {d.id for d in near if d.id}
+            for chunk in chunks:
+                if chunk.destination_id not in seen_ids:
+                    dest = await self.destination_repository.get_by_id(chunk.destination_id)
+                    if dest and categories:
+                        if dest.category and dest.category in categories:
+                            near.append(dest)
+                            seen_ids.add(dest.id)
+                    elif dest:
+                        near.append(dest)
+                        seen_ids.add(dest.id)
+
         dest_text = "\n\n".join(
             f"Nombre: {d.name}\n"
-            f"Ubicación: {d.city}\n"
+            f"Ubicación: {d.city or 'desconocida'}, {d.department or ''}"
+            f"{' — ' + str(round(d.distance_km)) + ' km desde ' + location if d.distance_km is not None else ''}\n"
+            f"Coordenadas: {d.latitude}, {d.longitude}\n"
             f"Categoría: {d.category}\n"
             f"Rating: {d.rating}\n"
             f"Días estimados: {d.estimated_days}\n"

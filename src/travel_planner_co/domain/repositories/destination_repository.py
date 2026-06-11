@@ -31,5 +31,11 @@ class DestinationRepository(ABC):
         ...
 
     @abstractmethod
+    async def find_similar(
+        self, name: str, latitude: float, longitude: float, radius_m: float = 200
+    ) -> Destination | None:
+        ...
+
+    @abstractmethod
     async def delete_chunks(self, destination_id: str) -> None:
         ...

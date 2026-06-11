@@ -34,9 +34,10 @@ async def list_destinations(
 
 @router.post("/sync", response_model=SyncResponse)
 async def sync_all_sources(
+    max_urls: int | None = None,
     use_case: SyncAllSourcesUseCase = Depends(get_sync_all_sources_use_case),
 ):
-    count = await use_case.execute()
+    count = await use_case.execute(max_urls=max_urls)
     return SyncResponse(status="ok", count=count)
 
 

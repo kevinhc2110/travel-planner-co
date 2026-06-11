@@ -21,18 +21,18 @@ class NominatimGeocoder:
         url = "https://nominatim.openstreetmap.org/search"
 
         async with httpx.AsyncClient() as client:
-            try:
-                resp = await client.get(
-                    url,
-                    params={"q": query, "format": "json", "limit": 1},
-                    headers={"User-Agent": self.user_agent},
-                    timeout=10,
-                )
-                self._last_request = time.monotonic()
-                resp.raise_for_status()
-                data = resp.json()
-                if data:
+            resp = await client.get(
+                url,
+                params={"q": query, "format": "json", "limit": 1},
+                headers={"User-Agent": self.user_agent},
+                timeout=10,
+            )
+            self._last_request = time.monotonic()
+            resp.raise_for_status()
+            data = resp.json()
+            if data:
+                try:
                     return float(data[0]["lat"]), float(data[0]["lon"])
-            except Exception:
-                pass
+                except (KeyError, ValueError, TypeError, IndexError):
+                    pass
         return None
