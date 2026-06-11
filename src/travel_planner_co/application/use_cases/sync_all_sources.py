@@ -4,6 +4,7 @@ from travel_planner_co.domain.services.scraper import ScraperService
 from travel_planner_co.domain.services.text_chunker import TextChunker
 from travel_planner_co.infrastructure.ai.embeddings.base import EmbeddingProvider
 from travel_planner_co.infrastructure.data.vectorstore.pgvector_store import PGVectorStore
+from travel_planner_co.infrastructure.services.geo_enricher import GeoEnricher
 
 
 class SyncAllSourcesUseCase:
@@ -14,36 +15,60 @@ class SyncAllSourcesUseCase:
         text_chunker: TextChunker,
         embedding_provider: EmbeddingProvider,
         vector_store: PGVectorStore,
+        geo_enricher: GeoEnricher,
     ):
         self.scraper_service = scraper_service
         self.destination_repository = destination_repository
         self.text_chunker = text_chunker
         self.embedding_provider = embedding_provider
         self.vector_store = vector_store
+        self.geo_enricher = geo_enricher
 
     async def execute(self) -> int:
-        destinations: list[Destination] = await self.scraper_service.scrape_all()
+        all_urls = await self.scraper_service.discover_urls()
+
+        existing_urls: set[str] = set()
+        for url in all_urls:
+            existing = await self.destination_repository.get_by_url(url)
+            if existing:
+                existing_urls.add(url)
+
+        new_urls = [u for u in all_urls if u not in existing_urls]
+
+        if not new_urls:
+            return 0
 
         count = 0
-        for dest in destinations:
-            existing = await self.destination_repository.get_by_url(dest.url)
-            if existing:
-                dest.id = existing.id
-                await self.destination_repository.update(dest)
-                await self.destination_repository.delete_chunks(str(existing.id))
-                dest_id = str(existing.id)
-            else:
-                dest_id = await self.destination_repository.save(dest)
+        for url in new_urls:
+            raw_list = await self.scraper_service.scrape_url(url)
+            if not raw_list:
+                continue
+            raw = raw_list[0]
 
-            chunks = self.text_chunker.chunk(dest.content)
+            dest = Destination(
+                name=raw.name,
+                full_content=raw.full_content,
+                source=raw.source,
+                url=raw.url,
+            )
+            dest = await self.geo_enricher.enrich(dest)
+            dest_id = await self.destination_repository.save(dest)
+
+            chunks = self.text_chunker.chunk(dest.full_content or "")
             if chunks:
                 embeddings = await self.embedding_provider.embed_batch(chunks)
-                for chunk_text, embedding in zip(chunks, embeddings, strict=True):
+                for chunk_text, embedding in zip(chunks, embeddings):
                     await self.vector_store.add(
                         destination_id=dest_id,
                         content=chunk_text,
                         embedding=embedding,
-                        metadata={"source": dest.source, "title": dest.title, "url": dest.url},
+                        metadata={
+                            "source": dest.source,
+                            "name": dest.name,
+                            "url": dest.url,
+                            "city": dest.city,
+                            "category": dest.category,
+                        },
                     )
             count += 1
 

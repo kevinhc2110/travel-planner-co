@@ -1,22 +1,30 @@
 from fastapi import APIRouter, Depends
 
-from travel_planner_co.api.dependencies import get_ai_planner_service
-from travel_planner_co.api.schemas.chat import ChatRequest, ChatResponse
-from travel_planner_co.domain.services.ai_planner_service import AIPlannerService
+from travel_planner_co.api.dependencies import get_generate_plan_use_case
+from travel_planner_co.api.schemas.chat import (
+    GeneratePlanRequest,
+    GeneratePlanResponse,
+)
+from travel_planner_co.application.use_cases.generate_plan import GeneratePlanUseCase
 
 router = APIRouter(prefix="/planner", tags=["planner"])
 
 
-@router.post("/chat", response_model=ChatResponse)
-async def chat(
-    body: ChatRequest,
-    planner: AIPlannerService = Depends(get_ai_planner_service),
+@router.post("/generate-plan", response_model=GeneratePlanResponse)
+async def generate_plan(
+    body: GeneratePlanRequest,
+    use_case: GeneratePlanUseCase = Depends(get_generate_plan_use_case),
 ):
-    response = await planner.chat(
-        query=body.query,
-        conversation_id=body.conversation_id,
+    plan = await use_case.execute(
+        city=body.city,
+        days=body.days,
+        categories=body.categories,
+        preferences=body.preferences,
     )
-    return ChatResponse(
-        response=response,
-        conversation_id=body.conversation_id or "",
+    return GeneratePlanResponse(
+        plan_id=str(plan.id),
+        city=plan.city,
+        days=plan.days,
+        categories=body.categories,
+        itinerary=plan.itinerary or {},
     )

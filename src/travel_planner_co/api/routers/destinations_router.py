@@ -8,6 +8,8 @@ from travel_planner_co.api.dependencies import (
 from travel_planner_co.api.schemas.destinations import (
     DestinationListResponse,
     DestinationResponse,
+    NearSearchRequest,
+    NearSearchResponse,
     SyncResponse,
     UpdateDestinationRequest,
     UpdateDestinationResponse,
@@ -25,17 +27,7 @@ async def list_destinations(
 ):
     destinations = await repo.list_all()
     return DestinationListResponse(
-        destinations=[
-            DestinationResponse(
-                id=str(d.id),
-                title=d.title,
-                source=d.source,
-                url=d.url,
-                created_at=d.created_at,
-                updated_at=d.updated_at,
-            )
-            for d in destinations
-        ],
+        destinations=[_to_response(d) for d in destinations],
         total=len(destinations),
     )
 
@@ -57,3 +49,41 @@ async def update_destination(
     if title is None:
         return UpdateDestinationResponse(status="not_found", title="")
     return UpdateDestinationResponse(status="ok", title=title)
+
+
+@router.post("/near", response_model=NearSearchResponse)
+async def search_near(
+    body: NearSearchRequest,
+    repo: DestinationRepository = Depends(get_destination_repository),
+):
+    destinations = await repo.search_near(
+        latitude=body.latitude,
+        longitude=body.longitude,
+        radius_km=body.radius_km,
+    )
+    return NearSearchResponse(
+        destinations=[_to_response(d) for d in destinations],
+        total=len(destinations),
+    )
+
+
+def _to_response(d) -> DestinationResponse:
+    return DestinationResponse(
+        id=str(d.id),
+        name=d.name,
+        description=d.description,
+        source=d.source,
+        url=d.url,
+        city=d.city,
+        department=d.department,
+        country=d.country,
+        category=d.category,
+        rating=d.rating,
+        estimated_days=d.estimated_days,
+        best_season=d.best_season,
+        latitude=d.latitude,
+        longitude=d.longitude,
+        tags=d.tags,
+        created_at=d.created_at,
+        updated_at=d.updated_at,
+    )

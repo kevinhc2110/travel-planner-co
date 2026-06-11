@@ -25,5 +25,11 @@ class DestinationRepository(ABC):
         ...
 
     @abstractmethod
+    async def search_near(
+        self, latitude: float, longitude: float, radius_km: float
+    ) -> list[Destination]:
+        ...
+
+    @abstractmethod
     async def delete_chunks(self, destination_id: str) -> None:
         ...

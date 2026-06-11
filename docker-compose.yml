@@ -1,6 +1,6 @@
 services:
   db:
-    image: pgvector/pgvector:pg17-postgis
+    build: ./db
     container_name: travel-planner-db
     restart: unless-stopped
 

@@ -11,6 +11,13 @@ class ScraperService(BaseScraperService):
     def __init__(self, scrapers: list[Scraper]):
         self.scrapers = scrapers
 
+    async def discover_urls(self) -> list[str]:
+        all_urls: list[str] = []
+        for scraper in self.scrapers:
+            urls = scraper.collect_article_urls()
+            all_urls.extend(urls)
+        return all_urls
+
     async def scrape_all(self) -> list[Destination]:
         destinations: list[Destination] = []
         for scraper in self.scrapers:
@@ -20,8 +27,8 @@ class ScraperService(BaseScraperService):
                 if data and data.get("title") and data.get("content"):
                     destinations.append(
                         Destination(
-                            title=data["title"],
-                            content=data["content"],
+                            name=data["title"],
+                            full_content=data["content"],
                             source=scraper.NAME,
                             url=url,
                         )
@@ -35,8 +42,8 @@ class ScraperService(BaseScraperService):
                 if data and data.get("title") and data.get("content"):
                     return [
                         Destination(
-                            title=data["title"],
-                            content=data["content"],
+                            name=data["title"],
+                            full_content=data["content"],
                             source=scraper.NAME,
                             url=url,
                         )

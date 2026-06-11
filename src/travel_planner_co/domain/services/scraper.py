@@ -5,6 +5,10 @@ from travel_planner_co.domain.entities.destination import Destination
 
 class ScraperService(ABC):
     @abstractmethod
+    async def discover_urls(self) -> list[str]:
+        ...
+
+    @abstractmethod
     async def scrape_all(self) -> list[Destination]:
         ...
 

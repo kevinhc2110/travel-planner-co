@@ -55,10 +55,10 @@ class PGVectorStore:
 
         return [
             ChunkRecord(
-                id=r["id"],
-                destination_id=r["destination_id"],
+                id=str(r["id"]),
+                destination_id=str(r["destination_id"]),
                 content=r["content"],
-                metadata=r["metadata"],
+                metadata=json.loads(r["metadata"]) if isinstance(r["metadata"], str) else r["metadata"],
             )
             for r in rows
         ]
