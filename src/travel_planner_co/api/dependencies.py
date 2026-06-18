@@ -57,7 +57,7 @@ def get_text_chunker() -> SimpleTextChunker:
     return SimpleTextChunker()
 
 def get_scraper_service() -> ScraperService:
-    scrapers = [Travelgrafia()]
+    scrapers = [Travelgrafia(), ColombiaTravel()]
     return ScraperService(scrapers=scrapers)
 
 def get_geocoder() -> NominatimGeocoder:
