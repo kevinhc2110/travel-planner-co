@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
+
 
 class LLMProvider(ABC):
 
@@ -7,15 +9,15 @@ class LLMProvider(ABC):
         self,
         prompt: str,
         system_instruction: str | None = None,
-        temperature: float = 0.3
+        temperature: float = 0.3,
     ) -> str:
-        pass
+        ...
 
     @abstractmethod
     async def stream_generate(
         self,
         prompt: str,
         system_instruction: str | None = None,
-        temperature: float = 0.3
-    ) -> str:
-        pass
+        temperature: float = 0.3,
+    ) -> AsyncGenerator[str, None]:
+        ...

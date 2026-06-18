@@ -2,7 +2,7 @@ from travel_planner_co.domain.entities.destination import Destination
 from travel_planner_co.domain.repositories.destination_repository import DestinationRepository
 from travel_planner_co.domain.services.scraper import ScraperService
 from travel_planner_co.domain.services.text_chunker import TextChunker
-from travel_planner_co.infrastructure.ai.embeddings.base import EmbeddingProvider
+from travel_planner_co.domain.services.embedding_provider import EmbeddingProvider
 from travel_planner_co.infrastructure.data.vectorstore.pgvector_store import PGVectorStore
 from travel_planner_co.infrastructure.services.geo_enricher import GeoEnricher
 

@@ -1,7 +1,7 @@
 import anyio
 from google import genai
 
-from travel_planner_co.infrastructure.ai.embeddings.base import EmbeddingProvider
+from travel_planner_co.domain.services.embedding_provider import EmbeddingProvider
 
 
 class GeminiEmbeddings(

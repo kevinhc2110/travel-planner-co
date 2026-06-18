@@ -1,7 +1,7 @@
 import json
 
 from travel_planner_co.domain.entities.destination import Destination
-from travel_planner_co.infrastructure.ai.llm.base import LLMProvider
+from travel_planner_co.domain.services.llm_provider import LLMProvider
 from travel_planner_co.infrastructure.constants import EXTRACTION_PROMPT
 from travel_planner_co.infrastructure.services.geocoder import NominatimGeocoder
 

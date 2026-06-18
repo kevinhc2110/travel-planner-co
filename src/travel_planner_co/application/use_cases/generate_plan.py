@@ -3,8 +3,8 @@ import json
 from travel_planner_co.domain.entities.plan import Plan
 from travel_planner_co.domain.repositories.destination_repository import DestinationRepository
 from travel_planner_co.domain.repositories.plan_repository import PlanRepository
-from travel_planner_co.infrastructure.ai.embeddings.base import EmbeddingProvider
-from travel_planner_co.infrastructure.ai.llm.base import LLMProvider
+from travel_planner_co.domain.services.embedding_provider import EmbeddingProvider
+from travel_planner_co.domain.services.llm_provider import LLMProvider
 from travel_planner_co.infrastructure.constants import PLAN_PROMPT
 from travel_planner_co.infrastructure.data.vectorstore.pgvector_store import PGVectorStore
 from travel_planner_co.infrastructure.services.geo_enricher import GeoEnricher

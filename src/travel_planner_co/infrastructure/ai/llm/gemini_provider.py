@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 
 from travel_planner_co.infrastructure.constants import SYSTEM_PROMPT
-from travel_planner_co.infrastructure.ai.llm.base import LLMProvider
+from travel_planner_co.domain.services.llm_provider import LLMProvider
 from google import genai
 from google.genai import types
 
