@@ -14,6 +14,23 @@ from travel_planner_co.infrastructure.services.geo_enricher import GeoEnricher
 from travel_planner_co.infrastructure.services.scraper_service import ScraperService
 from travel_planner_co.infrastructure.services.text_chunker import SimpleTextChunker
 
+_db_pool: PostgresDatabase | None = None
+
+
+async def get_worker_db() -> PostgresDatabase:
+    global _db_pool
+    if _db_pool is None:
+        _db_pool = PostgresDatabase(dsn=settings.postgres_dsn)
+        await _db_pool.connect()
+    return _db_pool
+
+
+async def close_worker_db() -> None:
+    global _db_pool
+    if _db_pool is not None:
+        await _db_pool.disconnect()
+        _db_pool = None
+
 
 def _bootstrap_use_cases(db: PostgresDatabase):
     llm_provider = GeminiProvider(
@@ -50,26 +67,14 @@ def _bootstrap_use_cases(db: PostgresDatabase):
 
 
 async def sync_all_sources_worker(ctx):
-    db = PostgresDatabase(dsn=settings.postgres_dsn)
-    await db.connect()
-    try:
-        sync_uc, _ = _bootstrap_use_cases(db)
-        count = await sync_uc.execute()
-        return {"count": count}
-    except Exception:
-        raise
-    finally:
-        await db.disconnect()
+    db = await get_worker_db()
+    sync_uc, _ = _bootstrap_use_cases(db)
+    count = await sync_uc.execute()
+    return {"count": count}
 
 
 async def update_destination_worker(ctx, url: str):
-    db = PostgresDatabase(dsn=settings.postgres_dsn)
-    await db.connect()
-    try:
-        _, update_uc = _bootstrap_use_cases(db)
-        title = await update_uc.execute(url=url)
-        return {"title": title}
-    except Exception:
-        raise
-    finally:
-        await db.disconnect()
+    db = await get_worker_db()
+    _, update_uc = _bootstrap_use_cases(db)
+    title = await update_uc.execute(url=url)
+    return {"title": title}
